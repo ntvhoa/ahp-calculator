@@ -1,0 +1,513 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tính AHP</title>
+<meta name="description" content="Nhập điểm so sánh cặp đôi, trang tính ngay trọng số phương án, trọng số tiêu chí, điểm có trọng số và tổng điểm theo quy trình phân tích thứ bậc (AHP).">
+<style>
+/* Bảng màu giống trang Kiểm tra AHP: navy (chủ đạo) và đỏ, tông pastel. */
+:root{
+  --bg:#f4f6fb; --card:#ffffff; --text:#1b2440; --muted:#59647f; --line:#d8deeb; --title:#26375f;
+  --accent:#3a4f82; --on-accent:#ffffff; --accent-soft:#e3e9f6; --head:#eaeef8;
+  --red:#962f37; --red-soft:#fbeaeb; --red-badge:#f2cdd0;
+  --warn:#8a5a00; --warn-soft:#fff3dc; --bad:#b42318; --bad-soft:#fde8e8; --good:#24427f; --input:#ffffff;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#11172a; --card:#182038; --text:#e5e9f3; --muted:#9ba6c0; --line:#2c3757; --title:#c9d5f2;
+    --accent:#9db1e0; --on-accent:#14203d; --accent-soft:#25335a; --head:#212c4b;
+    --red:#f0a9af; --red-soft:#3a2230; --red-badge:#5a2a33;
+    --warn:#f0b44c; --warn-soft:#3a2e17; --bad:#ff8a80; --bad-soft:#3b1f22; --good:#b4c6ee; --input:#121a30;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#11172a; --card:#182038; --text:#e5e9f3; --muted:#9ba6c0; --line:#2c3757; --title:#c9d5f2;
+  --accent:#9db1e0; --on-accent:#14203d; --accent-soft:#25335a; --head:#212c4b;
+  --red:#f0a9af; --red-soft:#3a2230; --red-badge:#5a2a33;
+  --warn:#f0b44c; --warn-soft:#3a2e17; --bad:#ff8a80; --bad-soft:#3b1f22; --good:#b4c6ee; --input:#121a30;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+main{max-width:1100px;margin:0 auto;padding:24px 16px 64px}
+h1{font-size:1.6rem;margin:0 0 4px;color:var(--title)}
+h2{font-size:1.2rem;margin:0 0 12px;color:var(--title)}
+h3{font-size:1.02rem;margin:0 0 10px}
+p{margin:0 0 10px;text-align:justify}
+.muted{color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;margin:16px 0}
+.step{display:inline-block;background:var(--red-badge);color:var(--red);font-weight:700;border-radius:999px;font-size:.78rem;padding:1px 10px;margin-right:8px;vertical-align:2px}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+label{font-size:.85rem;color:var(--muted);display:block;margin-bottom:3px}
+input,select,textarea{font:inherit;color:var(--text);background:var(--input);border:1px solid var(--line);border-radius:6px;padding:6px 8px}
+textarea{width:100%;min-height:70px;resize:vertical}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:0}
+button{font:inherit;cursor:pointer;border:1px solid var(--accent);background:var(--accent);color:var(--on-accent);border-radius:6px;padding:7px 14px}
+button.ghost{background:transparent;color:var(--accent)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:720px){.grid2{grid-template-columns:1fr}}
+.tablewrap{overflow-x:auto;margin:8px 0}
+table{border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:.92rem}
+th,td{border:1px solid var(--line);padding:5px 9px;text-align:right;white-space:nowrap}
+th{background:var(--head);font-weight:600}
+th:first-child,td.l{text-align:left}
+td.hl,th.hl{background:var(--accent-soft);font-weight:700}
+td.neg{color:var(--bad)}
+.pairs{display:grid;gap:6px;margin:6px 0 12px}
+.pair{display:grid;grid-template-columns:minmax(90px,1fr) 70px 22px 70px minmax(90px,1fr) minmax(120px,1.2fr);gap:8px;align-items:center}
+.pair .nm{font-weight:600;overflow:hidden;text-overflow:ellipsis}
+.pair .nm.r{text-align:right}
+.pair input{width:100%;text-align:center}
+.pair .vs{text-align:center;color:var(--muted)}
+.pair .res{font-size:.85rem;color:var(--muted)}
+.pair.err input{border-color:var(--bad);background:var(--bad-soft)}
+.pair.err .res{color:var(--bad);font-weight:600}
+input.err{border-color:var(--bad);background:var(--bad-soft)}
+@media (max-width:640px){.pair{grid-template-columns:1fr 60px 16px 60px 1fr}.pair .res{grid-column:1/-1}.pairhead span:last-child{display:none}}
+.pairhead{font-size:.8rem;color:var(--muted)}
+details{margin:8px 0}
+summary{cursor:pointer;color:var(--accent);font-weight:600}
+.note{background:var(--red-soft);color:var(--text);border-radius:8px;padding:8px 12px;font-size:.9rem;margin:8px 0}
+.note b{color:var(--red)}
+.note.bad{background:var(--bad-soft)}
+.note.bad b{color:var(--bad)}
+.note.info{background:var(--accent-soft)}
+.note.info b{color:var(--accent)}
+.badge{display:inline-block;border-radius:999px;padding:0 8px;font-size:.8rem;font-weight:600}
+.badge.ok{background:var(--accent-soft);color:var(--good)}
+.badge.warn{background:var(--warn-soft);color:var(--warn)}
+.bars{display:grid;gap:8px;margin-top:12px}
+.bar{display:grid;grid-template-columns:minmax(80px,160px) 1fr 70px;gap:10px;align-items:center}
+.bar .track{background:var(--head);border-radius:4px;height:18px;overflow:hidden}
+.bar .fill{background:var(--accent);height:100%}
+.bar .v{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.crit-card{border-top:1px solid var(--line);padding-top:14px;margin-top:14px}
+.crit-card:first-of-type{border-top:0;padding-top:0;margin-top:0}
+footer{color:var(--muted);font-size:.85rem;margin-top:24px;text-align:justify}
+.setting{display:grid;grid-template-columns:230px 1fr;gap:12px;align-items:stretch;margin-top:16px}
+.setting .ctl{background:var(--head);border:1px solid var(--line);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;justify-content:center;gap:6px}
+.setting .ctl label{font-weight:600;font-size:.95rem;color:var(--text);margin:0}
+.setting .ctl-line{display:flex;align-items:center;gap:8px}
+.setting .ctl input{width:72px;text-align:center;font-size:1.1rem;font-weight:600}
+.setting .ctl select{width:100%}
+.setting .note{margin:0;padding:12px 14px}
+@media (max-width:640px){.setting{grid-template-columns:1fr}}
+.scaletbl td{white-space:normal;vertical-align:top}
+.scaletbl td.l{min-width:120px}
+.scaletbl td.l:last-child,.scaletbl td.l:nth-child(3){min-width:240px}
+.winner{font-size:1.05rem;margin-top:12px}
+@media print{button,.noprint{display:none!important}details{display:block}details>*{display:block}.card{break-inside:avoid}}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Tính AHP – lựa chọn phương án</h1>
+    <p class="muted">Nhập điểm so sánh cặp đôi, trang tính ngay trọng số của từng phương án theo từng tiêu chí, trọng số của các tiêu chí, điểm có trọng số và tổng điểm, xếp hạng các phương án. Kết quả cập nhật mỗi khi bạn sửa một ô điểm.</p>
+    <p class="note"><b>Lưu ý:</b> dữ liệu bạn nhập được lưu trên trình duyệt của bạn, nên lần sau mở lại trang vẫn còn. Muốn làm bài mới, bấm <b>“Xóa hết điểm”</b> ở Bước 0.</p>
+  </header>
+
+  <!-- Bước 0: thiết lập -->
+  <section class="card">
+    <h2><span class="step">Bước 0</span>Thiết lập bài toán</h2>
+    <div class="grid2">
+      <div>
+        <label for="alts">Các phương án – mỗi dòng một tên (2–9)</label>
+        <textarea id="alts"></textarea>
+      </div>
+      <div>
+        <label for="crits">Các tiêu chí – mỗi dòng một tên (2–9)</label>
+        <textarea id="crits"></textarea>
+      </div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button id="apply">Cập nhật danh sách</button>
+      <button id="loadEx" class="ghost">Nạp ví dụ Tom – Dick – Harry</button>
+      <button id="clearAll" class="ghost">Xóa hết điểm</button>
+      <button id="print" class="ghost">In / lưu PDF</button>
+      <span id="listMsg" style="font-size:.88rem;flex-basis:100%;order:99"></span>
+    </div>
+
+    <div class="setting">
+      <div class="ctl">
+        <label for="scaleMax">Thang điểm</label>
+        <div class="ctl-line">từ 1 đến <input id="scaleMax" inputmode="decimal"></div>
+      </div>
+      <p class="note"><b>Thang điểm:</b> mặc định từ 1 đến 9 như slide. Có thể đổi điểm tối đa của thang; mỗi ô điểm khi đó nhận số từ 1 đến điểm tối đa mới.</p>
+    </div>
+    <details>
+      <summary id="scaleSummary">Thang điểm trong so sánh cặp đôi</summary>
+      <div id="scaleBox"></div>
+    </details>
+    <p class="muted" style="font-size:.88rem;margin-top:8px"><b>Cách nhập:</b> mỗi cặp có hai ô như bảng trong slide. Ghi điểm vào ô của yếu tố được đánh giá cao hơn, ô của yếu tố kém hơn luôn là 1 (ví dụ “Tom 1 – Dick 4”: Dick hơn Tom mức 4). Hai ô đều là 1 nghĩa là như nhau. Có thể dùng số thập phân (1,2). Cặp nào vượt thang hoặc có ô thấp hơn khác 1 sẽ bị tô đỏ và chưa được tính. Ma trận được lập theo hàng ngang: ô (hàng Tom, cột Dick) = điểm Tom / điểm Dick = 1/4.</p>
+
+    <div class="setting">
+      <div class="ctl">
+        <label for="pick">Lấy trọng số ở lần bình phương thứ</label>
+        <select id="pick">
+          <option value="1">1</option><option value="2" selected>2</option><option value="3">3</option>
+          <option value="4">4</option><option value="0">Lần cuối (đã hội tụ)</option>
+        </select>
+      </div>
+      <p class="note info"><b>Lần bình phương:</b> ví dụ trong slide lấy trọng số ở <b>lần bình phương thứ 2</b> (lần 3 dùng để đối chiếu “So sánh 3/2”). Chọn “Lần cuối (đã hội tụ)” để lấy trọng số khi các lần bình phương liên tiếp không còn thay đổi.</p>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2><span class="step">Bước 1</span>Trọng số của từng phương án theo từng tiêu chí</h2>
+    <div id="altSections"></div>
+  </section>
+
+  <section class="card">
+    <h2><span class="step">Bước 2</span>Trọng số của các tiêu chí (so với mục tiêu)</h2>
+    <div id="critSection"></div>
+  </section>
+
+  <section class="card">
+    <h2><span class="step">Bước 3</span>Điểm từng tiêu chí (có trọng số) của từng phương án</h2>
+    <p class="muted">Điểm đã có trọng số = trọng số của tiêu chí × điểm (trọng số) của phương án theo tiêu chí đó.</p>
+    <div id="step3"></div>
+  </section>
+
+  <section class="card">
+    <h2><span class="step">Bước 4</span>Tổng điểm đã có trọng số và xếp hạng</h2>
+    <div id="step4"></div>
+  </section>
+
+  <footer>
+    Quy trình tính: lập ma trận so sánh cặp đôi → bình phương ma trận liên tiếp → cộng theo hàng, chia cho tổng để ra trọng số → so sánh trọng số giữa hai lần liên tiếp. Phần “Tỷ số nhất quán CR” là thông tin tham khảo bổ sung theo Saaty (CR ≤ 0,10 thường được coi là chấp nhận được), không có trong ví dụ trên slide. Muốn tự tính rồi kiểm tra đáp án, dùng trang <a href="https://ntvhoa.github.io/ahp-checker/">Kiểm tra AHP</a>.
+  </footer>
+</main>
+
+<script src="ahp.js"></script>
+<script>
+(function(){
+  var KEY = 'ahp-calculator-v1';
+  var EXAMPLE = {
+    alts: ['Tom', 'Dick', 'Harry'],
+    crits: ['Kinh nghiệm', 'Trình độ', 'Khả năng lãnh đạo', 'Tuổi'],
+    altPairs: [
+      { '0-1': ['1', '4'], '0-2': ['4', '1'], '1-2': ['9', '1'] },   // Kinh nghiệm
+      { '0-1': ['3', '1'], '0-2': ['1', '5'], '1-2': ['1', '7'] },   // Trình độ
+      { '0-1': ['5', '1'], '0-2': ['9', '1'], '1-2': ['4', '1'] },   // Khả năng lãnh đạo
+      { '0-1': ['1', '3'], '0-2': ['5', '1'], '1-2': ['9', '1'] }    // Tuổi
+    ],
+    critPairs: { '0-1': ['4', '1'], '0-2': ['3', '1'], '0-3': ['7', '1'],
+                 '1-2': ['1', '3'], '1-3': ['3', '1'], '2-3': ['5', '1'] },
+    pick: 2,
+    scaleMax: 9
+  };
+  // Bảng giải thích thang 1–9: chép nguyên văn từ trang Kiểm tra AHP (slide 48)
+  var SCALE_TABLES = {
+    '9': {
+      source: 'Thang điểm cơ bản trong so sánh cặp đôi (slide 48)',
+      rows: [
+        ['1', 'Quan trọng như nhau', '2 yếu tố có đóng góp như nhau cho việc thực hiện mục tiêu'],
+        ['3', 'Quan trọng vừa phải', 'Kinh nghiệm và suy xét cho thấy yếu tố này có tầm quan trọng hơn một yếu tố khác một chút'],
+        ['5', 'Rất quan trọng', 'Kinh nghiệm và suy xét cho thấy yếu tố này có tầm quan trọng hơn một yếu tố khác rất nhiều'],
+        ['7', 'Cực kỳ quan trọng', 'Thực tế cho thấy yếu tố này cực kỳ quan trọng so với một yếu tố khác'],
+        ['9', 'Vô cùng quan trọng', 'Thực tế khẳng định một yếu tố quan trọng hơn hẳn một yếu tố khác (mức độ quan trọng cao nhất)']
+      ],
+      note: 'Mức độ quan trọng 2, 4,6 hoặc 1,1; 1,2; … cũng có thể được sử dụng'
+    }
+  };
+
+  function blankState() {
+    var s = clone(EXAMPLE);
+    s.altPairs = s.crits.map(function () { return remap([], s.alts, {}); });
+    s.critPairs = remap([], s.crits, {});
+    return s;
+  }
+
+  var state = load() || blankState();
+  if (!(state.scaleMax > 1)) state.scaleMax = 9;
+  var results = { alt: [], crit: null };
+  var $ = function (id) { return document.getElementById(id); };
+
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  function load() { try { var s = localStorage.getItem(KEY); return s ? JSON.parse(s) : null; } catch (e) { return null; } }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  function f4(x) { return (Math.round(x * 10000) / 10000).toFixed(4); }
+  function fM(x) {
+    if (!isFinite(x)) return '–';
+    if (Math.abs(x) >= 1e9) return x.toExponential(3);
+    if (Math.abs(x) >= 1000) return Math.round(x).toString();
+    return x.toFixed(2);
+  }
+  function fDiff(x) {
+    if (Math.abs(x) < 0.000005) return '0.00000';
+    return Math.abs(x) < 0.001 ? x.toFixed(5) : x.toFixed(4);
+  }
+  function fFrac(x) {
+    if (!isFinite(x)) return '?';
+    var r = Math.round(x);
+    if (Math.abs(x - r) < 1e-9) return String(r);
+    var inv = 1 / x, ri = Math.round(inv);
+    if (x < 1 && Math.abs(inv - ri) < 1e-9) return '1/' + ri;
+    return x.toFixed(2);
+  }
+
+  // ---------- thang điểm ----------
+  function renderScale() {
+    var key = String(state.scaleMax), maxTxt = key.replace('.', ','), t = SCALE_TABLES[key], h = '';
+    $('scaleSummary').textContent = 'Thang điểm trong so sánh cặp đôi (từ 1 đến ' + maxTxt + ')';
+    if (t) {
+      h += '<p class="muted" style="font-size:.88rem;margin-top:8px">' + esc(t.source) + '</p>';
+      h += '<div class="tablewrap"><table class="scaletbl"><tr><th>Mức độ quan trọng</th><th style="text-align:left">Định nghĩa</th><th style="text-align:left">Giải thích</th></tr>';
+      t.rows.forEach(function (r) { h += '<tr><td>' + esc(r[0]) + '</td><td class="l">' + esc(r[1]) + '</td><td class="l">' + esc(r[2]) + '</td></tr>'; });
+      if (t.note) h += '<tr><td colspan="3" class="l">' + esc(t.note) + '</td></tr>';
+      h += '</table></div>';
+    } else {
+      h += '<p style="font-size:.9rem;margin-top:8px">Chưa có bảng giải thích có sẵn cho thang 1–' + esc(maxTxt) + '.</p>';
+    }
+    h += '<p class="muted" style="font-size:.88rem">Với mọi thang: điểm 1 = hai yếu tố như nhau; điểm ' + esc(maxTxt) + ' = mức cao nhất của thang đã khai báo.</p>';
+    $('scaleBox').innerHTML = h;
+  }
+
+  // ---------- quy tắc nhập một cặp ----------
+  function pairIssue(v) {
+    v = v || ['', ''];
+    var l = AHP.parseNum(v[0]), r = AHP.parseNum(v[1]), max = Number(state.scaleMax);
+    if (!isFinite(l) || !isFinite(r)) return 'chưa nhập đủ / không phải số';
+    if (l < 1 || r < 1) return 'điểm phải từ 1 trở lên';
+    if (l > max || r > max) return 'vượt thang (tối đa ' + String(max).replace('.', ',') + ')';
+    if (Math.abs(Math.min(l, r) - 1) > 1e-12) return 'ô của yếu tố kém hơn phải là 1';
+    return '';
+  }
+
+  function pairKeys(n) { var k = []; for (var i = 0; i < n; i++) for (var j = i + 1; j < n; j++) k.push([i, j]); return k; }
+
+  function pairBlock(names, store, id) {
+    var h = '<div class="pairs"><div class="pair pairhead"><span>Yếu tố A</span><span style="text-align:center">Điểm A</span><span></span><span style="text-align:center">Điểm B</span><span style="text-align:right">Yếu tố B</span><span>Ô ma trận (A, B)</span></div>';
+    pairKeys(names.length).forEach(function (p) {
+      var key = p[0] + '-' + p[1], v = store[key] || ['', ''];
+      h += '<div class="pair" id="' + id + '-row-' + key + '">' +
+        '<span class="nm">' + esc(names[p[0]]) + '</span>' +
+        '<input inputmode="decimal" aria-label="Điểm ' + esc(names[p[0]]) + '" data-g="' + id + '" data-k="' + key + '" data-s="0" value="' + esc(v[0]) + '">' +
+        '<span class="vs">–</span>' +
+        '<input inputmode="decimal" aria-label="Điểm ' + esc(names[p[1]]) + '" data-g="' + id + '" data-k="' + key + '" data-s="1" value="' + esc(v[1]) + '">' +
+        '<span class="nm r">' + esc(names[p[1]]) + '</span>' +
+        '<span class="res" id="' + id + '-res-' + key + '"></span></div>';
+    });
+    return h + '</div>';
+  }
+
+  function buildInputs() {
+    $('alts').value = state.alts.join('\n');
+    $('crits').value = state.crits.join('\n');
+    $('pick').value = String(state.pick);
+    $('scaleMax').value = String(state.scaleMax).replace('.', ',');
+    renderScale();
+    var h = '';
+    state.crits.forEach(function (c, ci) {
+      h += '<div class="crit-card"><h3>Tiêu chí: ' + esc(c) + '</h3>' + pairBlock(state.alts, state.altPairs[ci], 'a' + ci) + '<div id="a' + ci + '-out"></div></div>';
+    });
+    $('altSections').innerHTML = h;
+    $('critSection').innerHTML = pairBlock(state.crits, state.critPairs, 'c') + '<div id="c-out"></div>';
+  }
+
+  // ---------- kết quả một ma trận ----------
+  function renderAnalysis(names, r, label) {
+    if (r.invalid.length) {
+      return '<div class="note bad">Còn ' + r.invalid.length + ' cặp chưa hợp lệ (xem các dòng tô đỏ và lý do bên cạnh). Sửa xong trang sẽ tính trọng số.</div>';
+    }
+    var n = names.length, h = '';
+    h += '<div class="tablewrap"><table><tr><th></th>';
+    names.forEach(function (x) { h += '<th>' + esc(x) + '</th>'; });
+    h += '<th class="hl">Trọng số</th></tr>';
+    r.matrix.forEach(function (row, i) {
+      h += '<tr><td class="l"><b>' + esc(names[i]) + '</b></td>';
+      row.forEach(function (x) { h += '<td>' + fFrac(x) + '</td>'; });
+      h += '<td class="hl">' + f4(r.weights[i]) + '</td></tr>';
+    });
+    h += '<tr><td class="l"><b>Tổng</b></td>' + names.map(function () { return '<td></td>'; }).join('') + '<td class="hl">1.0000</td></tr>';
+    h += '</table></div>';
+
+    var info = 'Trọng số lấy ở lần bình phương thứ ' + r.used.k;
+    if (r.nextDiff !== null) {
+      var ok = r.nextDiff < 0.001;
+      info += ' · chênh lệch lớn nhất so với lần ' + (r.used.k + 1) + ': ' + fDiff(r.nextDiff) +
+        ' <span class="badge ' + (ok ? 'ok' : 'warn') + '">' + (ok ? 'đã ổn định' : 'chưa ổn định – nên lấy lần sau') + '</span>';
+    }
+    var cr = r.consistency;
+    if (n >= 3) {
+      var crOk = cr.CR <= 0.1;
+      info += '<br>Tham khảo: λmax = ' + cr.lambda.toFixed(4) + ', CI = ' + cr.CI.toFixed(4) + ', RI = ' + cr.RI.toFixed(2) +
+        ', CR = ' + cr.CR.toFixed(4) + ' <span class="badge ' + (crOk ? 'ok' : 'warn') + '">' + (crOk ? 'CR ≤ 0,10' : 'CR > 0,10 – xem lại điểm so sánh') + '</span>';
+    }
+    h += '<p class="muted" style="font-size:.88rem">' + info + '</p>';
+
+    h += '<details><summary>Xem chi tiết các lần bình phương ma trận ' + esc(label) + '</summary>';
+    r.iterations.forEach(function (it) {
+      h += '<p style="margin-top:10px"><b>Ma trận bình phương lần ' + it.k + '</b>' + (it.rescaled ? ' <span class="muted">(đã chia cho cùng một số để tránh tràn số; trọng số không đổi)</span>' : '') + '</p>';
+      h += '<div class="tablewrap"><table><tr><th></th>';
+      names.forEach(function (x) { h += '<th>' + esc(x) + '</th>'; });
+      h += '<th>Tổng</th><th' + (it.k === r.used.k ? ' class="hl"' : '') + '>Trọng số</th>' + (it.diff ? '<th>So sánh ' + it.k + '/' + (it.k - 1) + '</th>' : '') + '</tr>';
+      it.matrix.forEach(function (row, i) {
+        h += '<tr><td class="l">' + esc(names[i]) + '</td>';
+        row.forEach(function (x) { h += '<td>' + fM(x) + '</td>'; });
+        h += '<td>' + fM(it.sums[i]) + '</td><td' + (it.k === r.used.k ? ' class="hl"' : '') + '>' + f4(it.weights[i]) + '</td>';
+        if (it.diff) h += '<td' + (it.diff[i] < 0 ? ' class="neg"' : '') + '>' + fDiff(it.diff[i]) + '</td>';
+        h += '</tr>';
+      });
+      h += '<tr><td class="l"></td>' + names.map(function () { return '<td></td>'; }).join('') + '<td><b>' + fM(it.total) + '</b></td><td><b>1.0000</b></td>' + (it.diff ? '<td></td>' : '') + '</tr>';
+      h += '</table></div>';
+    });
+    h += '</details>';
+    return h;
+  }
+
+  function markPairs(id, names, store, r) {
+    pairKeys(names.length).forEach(function (p) {
+      var key = p[0] + '-' + p[1], issue = pairIssue(store[key]);
+      var row = $(id + '-row-' + key), res = $(id + '-res-' + key);
+      if (!row) return;
+      row.classList.toggle('err', !!issue);
+      res.textContent = issue ? '✗ ' + issue : 'a(' + names[p[0]] + ', ' + names[p[1]] + ') = ' + fFrac(r.matrix[p[0]][p[1]]);
+    });
+  }
+
+  function recompute() {
+    var pick = Number(state.pick);
+    function valid(store) { return function (i, j) { var v = store[i + '-' + j]; return pairIssue(v) ? null : v; }; }
+    results.alt = state.crits.map(function (c, ci) {
+      var store = state.altPairs[ci];
+      var r = AHP.analyse(state.alts.length, valid(store), pick);
+      markPairs('a' + ci, state.alts, store, r);
+      $('a' + ci + '-out').innerHTML = renderAnalysis(state.alts, r, 'theo tiêu chí ' + c);
+      return r;
+    });
+    var rc = AHP.analyse(state.crits.length, valid(state.critPairs), pick);
+    markPairs('c', state.crits, state.critPairs, rc);
+    $('c-out').innerHTML = renderAnalysis(state.crits, rc, 'tiêu chí');
+    results.crit = rc;
+    renderSummary();
+    save();
+  }
+
+  function renderSummary() {
+    var missing = [];
+    results.alt.forEach(function (r, ci) { if (r.invalid.length) missing.push('tiêu chí “' + state.crits[ci] + '”'); });
+    if (results.crit.invalid.length) missing.push('so sánh các tiêu chí');
+    if (missing.length) {
+      var msg = '<div class="note">Cần nhập đủ điểm hợp lệ cho: ' + missing.map(esc).join('; ') + '.</div>';
+      $('step3').innerHTML = msg; $('step4').innerHTML = msg; return;
+    }
+    var cw = results.crit.weights, aw = results.alt.map(function (r) { return r.weights; });
+    var g = AHP.aggregate(cw, aw), A = state.alts, C = state.crits;
+
+    var h = '<div class="tablewrap"><table><tr><th>Tiêu chí</th><th>Trọng số của tiêu chí so với mục tiêu</th><th style="text-align:left">Phương án</th><th>Điểm của phương án chưa có trọng số</th><th class="hl">Điểm của phương án đã có trọng số</th></tr>';
+    C.forEach(function (c, ci) {
+      A.forEach(function (a, ai) {
+        h += '<tr>' + (ai === 0 ? '<td class="l" rowspan="' + A.length + '"><b>' + esc(c) + '</b></td><td rowspan="' + A.length + '">' + f4(cw[ci]) + '</td>' : '') +
+          '<td class="l">' + esc(a) + '</td><td>' + f4(aw[ci][ai]) + '</td><td class="hl">' + f4(g.weighted[ci][ai]) + '</td></tr>';
+      });
+    });
+    $('step3').innerHTML = h + '</table></div>';
+
+    h = '<div class="tablewrap"><table><tr><th>Phương án</th>';
+    C.forEach(function (c) { h += '<th>' + esc(c) + '</th>'; });
+    h += '<th class="hl">Tổng</th><th>Xếp hạng</th></tr>';
+    var order = g.totals.map(function (t, i) { return i; }).sort(function (x, y) { return g.totals[y] - g.totals[x]; });
+    var rank = []; order.forEach(function (ai, k) { rank[ai] = k + 1; });
+    A.forEach(function (a, ai) {
+      h += '<tr><td class="l"><b>' + esc(a) + '</b></td>';
+      C.forEach(function (c, ci) { h += '<td>' + f4(g.weighted[ci][ai]) + '</td>'; });
+      h += '<td class="hl">' + f4(g.totals[ai]) + '</td><td>' + rank[ai] + '</td></tr>';
+    });
+    h += '<tr><td class="l"><b>Tổng</b></td>';
+    C.forEach(function (c, ci) { h += '<td>' + f4(cw[ci]) + '</td>'; });
+    h += '<td class="hl">' + f4(g.totals.reduce(function (s, x) { return s + x; }, 0)) + '</td><td></td></tr></table></div>';
+
+    var max = Math.max.apply(null, g.totals);
+    h += '<div class="bars">';
+    order.forEach(function (ai) {
+      h += '<div class="bar"><span>' + esc(A[ai]) + '</span><div class="track"><div class="fill" style="width:' + (max > 0 ? g.totals[ai] / max * 100 : 0) + '%"></div></div><span class="v">' + f4(g.totals[ai]) + '</span></div>';
+    });
+    var tie = order.length > 1 && Math.abs(g.totals[order[0]] - g.totals[order[1]]) < 5e-5;
+    h += '</div><p class="winner">' + (tie
+      ? 'Có phương án đồng hạng cao nhất (chênh lệch dưới 0,0001) – xem lại điểm so sánh.'
+      : 'Phương án được chọn (tổng điểm cao nhất): <b>' + esc(A[order[0]]) + '</b> (' + f4(g.totals[order[0]]) + ').') + '</p>';
+    $('step4').innerHTML = h;
+  }
+
+  // ---------- sự kiện ----------
+  document.addEventListener('input', function (e) {
+    var t = e.target;
+    if (!t.dataset || !t.dataset.g) return;
+    var g = t.dataset.g, key = t.dataset.k, side = Number(t.dataset.s);
+    var store = g === 'c' ? state.critPairs : state.altPairs[Number(g.slice(1))];
+    if (!store[key]) store[key] = ['', ''];
+    store[key][side] = t.value;
+    recompute();
+  });
+
+  function readList(id) { return $(id).value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean); }
+  function oldIndex(oldNames, newNames, i) {
+    var k = oldNames.indexOf(newNames[i]);
+    if (k < 0 && oldNames.length === newNames.length && newNames.indexOf(oldNames[i]) < 0) k = i;
+    return k;
+  }
+  function remap(oldNames, newNames, store) {
+    var out = {};
+    for (var i = 0; i < newNames.length; i++) for (var j = i + 1; j < newNames.length; j++) {
+      var oi = oldIndex(oldNames, newNames, i), oj = oldIndex(oldNames, newNames, j);
+      if (oi < 0 || oj < 0) { out[i + '-' + j] = ['1', '1']; continue; }
+      var v = oi < oj ? store[oi + '-' + oj] : store[oj + '-' + oi];
+      if (!v) { out[i + '-' + j] = ['1', '1']; continue; }
+      out[i + '-' + j] = oi < oj ? v.slice() : [v[1], v[0]];
+    }
+    return out;
+  }
+  function listMsg(text, bad) { var m = $('listMsg'); m.textContent = text || ''; m.style.color = bad ? 'var(--bad)' : ''; }
+
+  function applyLists() {
+    var alts = readList('alts'), crits = readList('crits');
+    if (alts.length < 2 || alts.length > 9 || crits.length < 2 || crits.length > 9) {
+      listMsg('Chưa cập nhật: cần từ 2 đến 9 phương án và từ 2 đến 9 tiêu chí.', true); return;
+    }
+    if (new Set(alts).size !== alts.length || new Set(crits).size !== crits.length) {
+      listMsg('Chưa cập nhật: tên phương án / tiêu chí không được trùng nhau.', true); return;
+    }
+    listMsg('');
+    if (alts.join('\n') === state.alts.join('\n') && crits.join('\n') === state.crits.join('\n')) return;
+    var altPairs = crits.map(function (c, i) {
+      var oc = oldIndex(state.crits, crits, i);
+      return remap(state.alts, alts, oc >= 0 ? state.altPairs[oc] : {});
+    });
+    state.critPairs = remap(state.crits, crits, state.critPairs);
+    state.altPairs = altPairs; state.alts = alts; state.crits = crits;
+    buildInputs(); recompute();
+  }
+  $('apply').addEventListener('click', applyLists);
+  ['alts', 'crits'].forEach(function (id) {
+    $(id).addEventListener('input', function () { listMsg('Danh sách đã thay đổi – các bước sau sẽ cập nhật khi bạn rời khỏi ô này (hoặc bấm “Cập nhật danh sách”).'); });
+    $(id).addEventListener('change', applyLists);
+  });
+  $('loadEx').addEventListener('click', function () { state = clone(EXAMPLE); buildInputs(); recompute(); });
+  $('clearAll').addEventListener('click', function () {
+    if (!confirm('Đặt lại tất cả điểm so sánh về 1 – 1?')) return;
+    state.altPairs = state.crits.map(function () { return remap([], state.alts, {}); });
+    state.critPairs = remap([], state.crits, {});
+    buildInputs(); recompute();
+  });
+  $('scaleMax').addEventListener('input', function () {
+    var v = AHP.parseNum(this.value), ok = isFinite(v) && v > 1;
+    this.classList.toggle('err', !ok);
+    this.title = ok ? '' : 'Điểm tối đa phải là số lớn hơn 1';
+    if (!ok) return;
+    state.scaleMax = v; renderScale(); recompute();
+  });
+  $('pick').addEventListener('change', function () { state.pick = Number(this.value); recompute(); });
+  $('print').addEventListener('click', function () {
+    document.querySelectorAll('details').forEach(function (d) { d.open = true; });
+    window.print();
+  });
+
+  buildInputs(); recompute();
+})();
+</script>
+</body>
+</html>
